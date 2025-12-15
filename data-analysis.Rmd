@@ -1,0 +1,291 @@
+---
+title: "Data in brief analysis"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(anytime)
+# library(scales)
+# library(tidyr)
+# library(lubridate)
+# library(viridis)
+# library(knitr)
+# library(purrr)
+# library(data.table)
+# library(readr)
+# library(extrafont)
+
+
+```
+
+
+## Importing Data
+
+```{r}
+path <- "Dataset on Resource Allocation and Usage for a Private Cloud"
+
+server_usage <- read.csv(file.path(path, "servers_usage.csv"))
+user_projects <-  read.csv(file.path(path, "user_projects.csv"))
+server_specs <- read.csv(file.path(path, "servers_specs.csv"))
+server_ownerships <-read.csv(file.path(path, "servers_ownerships.csv"))
+projects_quota <- read.csv(file.path(path, "projects_quota.csv"))
+projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.csv"))
+flavors <- read.csv(file.path(path, "flavors.csv"))
+
+
+```
+
+
+
+## Matching servers with flavors and projects. 
+This way we will have the list of servers with respective flavor and project. Also, we are using the anydate lib to get a redable timestamp. 
+```{r}
+
+server_w_flavor <- inner_join(server_specs, flavors, by = "flavor_id") %>% select(-id) %>% 
+                   mutate(date = anydate(timestamp))
+
+
+server_ownerships <- server_ownerships %>% select(-id, -timestamp) %>% distinct()
+servers_complete <- inner_join(server_w_flavor, server_ownerships, by = "server_id")
+
+summary(servers_complete)
+
+```
+
+
+## Count instances per project
+```{r}
+
+count_servers <- servers_complete %>% group_by(date, project_id) %>% summarise(n_instances = n_distinct(server_id))
+
+## To improve visualization we should get only the major projects, the 5 ones with more instances associated. 
+count_servers_total <- count_servers %>% 
+                       group_by(project_id) %>% 
+                       summarise(total_instances = sum(n_instances)) %>% 
+                       arrange(desc(total_instances))
+
+top_5 <- count_servers_total$project_id[1:5]
+count_servers_top_k <- count_servers %>% 
+                 mutate(Project = if_else(project_id %in% top_5, project_id, "Others")) %>% 
+                 group_by(date, Project) %>% summarise(n_instances=sum(n_instances))
+
+```
+
+
+# Plot stacked area of instances per project
+```{r}
+base_palette <- c("#7A7A7A","#D17C2E","#3B6EA8","#8C6BB1","#6C8E4C","#A45A6B")
+
+
+breaks.vec <- seq(min(count_servers_top_k$date), as.Date("2025-06-17"), by = "1 month")
+
+paper_theme <- theme_minimal(base_size = 15, base_family = "Time") +
+  theme(
+    text = element_text(face = "plain"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    plot.title = element_blank(),
+    axis.title.x = element_blank(),
+    axis.line.x   = element_blank(),
+    axis.ticks.x  = element_line(colour = "black", linewidth = 0.4),
+    axis.ticks.length = unit(3.5, "pt"),
+    axis.text.x   = element_text(margin = margin(t = 6))
+  )
+
+ggplot(count_servers_top_k, aes(x = date, y = n_instances, fill = Project)) +
+  geom_area(position = "stack", alpha = 0.9) +
+  scale_x_continuous(limits = c(0, 300)) +
+  scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
+  labs(x = NULL, y = "Number of instances by project") +
+  paper_theme  +
+  scale_fill_manual(values = base_palette) + 
+  theme(
+    legend.position      = c(0.02, 0.98),
+    legend.justification = c(0, 1),
+    legend.background    = element_rect(fill = "grey95", colour = "grey55"),
+    legend.key.height    = unit(5, "pt"),
+    legend.key.width     = unit(14, "pt"),
+    legend.margin        = margin(6, 8, 6, 8),
+    plot.margin          = margin(6, 12, 6, 6),
+    text = element_text(family="Times"),
+  ) 
+
+```
+
+
+
+# Plot users trough the time
+```{r}
+count_users <- servers_complete %>% group_by(date) %>% summarise(n_users = n_distinct(user_id))
+
+ggplot(count_users, aes(x = date, y = n_users)) +
+  geom_line(color="#D17C2E") +
+  scale_y_continuous(limits = c(30, 80)) +
+  scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
+  labs(x = NULL, y = "Number of users") +
+  paper_theme  +
+  scale_fill_manual(values = base_palette) + 
+  theme(
+    legend.position      = c(0.02, 0.98),
+    legend.justification = c(0, 1),
+    legend.background    = element_rect(fill = "grey95", colour = "grey55"),
+    legend.key.height    = unit(5, "pt"),
+    legend.key.width     = unit(14, "pt"),
+    legend.margin        = margin(6, 8, 6, 8),
+    plot.margin          = margin(6, 12, 6, 6),
+    text = element_text(family="Times"),
+  
+  ) 
+```
+
+# (WiP) Plot of vcpu and RAM utilization trough the time 
+
+
+```{r}
+
+date_min  <- as.Date("2024-05-23")
+date_max  <- as.Date("2025-05-17")
+
+server_usage <- server_usage %>% select(-host_id, -id) %>% na.omit()
+server_resume_flavor <- server_w_flavor %>% select(flavor_name, vcpu, ram, server_id) %>% na.omit() %>% distinct()
+
+
+# selecting servers that were right-sized. keeping just the ones that are fully in the dataset and consistent.
+changed_servers <- server_resume_flavor %>% select(server_id, flavor_name) %>% distinct()%>% group_by(server_id) %>% summarise(count=n(), flavor=flavor_name) %>% filter(count >1)
+
+
+server_usage <- server_usage %>% filter(!server_id %in% changed_servers$server_id)
+
+server_usage_full <- right_join(server_resume_flavor, server_usage, by = c("server_id")) %>% mutate(date=anydate(timestamp)) %>% filter(date < date_max)
+  
+  
+total_dates <- n_distinct(server_usage_full$date)
+
+consistent_servers <- server_usage_full %>%
+  group_by(server_id) %>%
+  summarise(n_observacoes = n(), .groups = 'drop') %>%
+  filter(n_observacoes >= total_dates) %>%
+  pull(server_id)
+
+server_usage_main_servers <- server_usage %>%
+  filter(server_id %in% consistent_servers) %>% 
+  mutate(date = anydate(timestamp)) %>% 
+  group_by(date, server_id) %>% 
+  summarise(vcpu_usage = mean(vcpu_usage), ram_usage = mean(ram_usage), vcpu_perc = vcpu_usage/vcpu)
+
+
+# Servidores que estão no top 4 de AMBAS as métricas
+servers_top_duas_metricas <- intersect(top_cpu, top_ram)
+
+
+
+# first, aggregate by day 
+server_usage_day <- server_usage %>% 
+                    mutate(date=anydate(timestamp)) %>% 
+                    select(-id, -timestamp, -host_id) %>% 
+                    group_by(server_id, date) %>% summarise(mean_cpu = mean(vcpu_usage), mean_ram = mean(ram_usage)) %>% 
+                    na.omit() %>% 
+                    filter(date >= date_min | date <= date_max)
+
+total_timestamps <- length(unique(server_usage_day$date))
+
+
+servers_completos <- server_usage_day %>%
+  group_by(server_id) %>% summarise(n_observacoes = length(unique(date))) %>% 
+  filter(n_observacoes > 300)
+
+
+
+
+unique(server_usage_day$server_id)
+
+
+
+```
+
+
+
+
+# Data gap
+
+```{r}
+
+
+contagem_na <- server_usage %>% mutate(date=anydate(timestamp), complete_date=anytime(timestamp)) %>% group_by(complete_date) %>% summarise(count_servers = n_distinct(server_id), nas =sum(is.na(vcpu_usage)))
+
+filtered <- contagem_na %>%  filter(nas >= count_servers)
+
+nas <- server_usage %>% mutate(date=anytime(timestamp)) %>%  filter(is.na(vcpu_usage), is.na(ram_usage)) %>% select(-id, -timestamp, -server_id, -host_id, -vcpu_usage, -ram_usage) %>% distinct()
+
+df <- filtered %>%
+  mutate(delta = as.numeric(difftime(complete_date, lag(complete_date), units = "mins")),
+         group = cumsum(ifelse(is.na(delta) | delta != 5, 1, 0)))
+
+
+intervals <- df %>%
+  group_by(group) %>%
+  summarise(
+    start = min(complete_date),
+    end = max(complete_date),
+    length = n()
+  ) %>%
+  arrange(desc(length))
+
+intervals <- intervals %>% mutate(size_interval = length * 5 ) %>% group_by(size_interval) %>% summarise(count = n())
+
+
+df_plot <- contagem_na %>% mutate(gap = nas >= count_servers, date = anydate(complete_date)) %>% 
+                           mutate(status = case_when((gap == TRUE) ~ "Data missing",(gap == FALSE) ~ "Data available"))
+
+
+
+df_plot$date <- as.POSIXct(df_plot$date, format="%Y-%m-%d %H:%M:%S")
+
+breaks.vec <- seq(min(df_plot$complete_date), as.POSIXct("2025-06-17", format="%Y-%m-%d %H:%M:%S"), by = "1 month")
+
+
+ggplot(df_plot, aes(x = date, y = 1)) +
+  geom_tile(aes(fill = status),height = Inf) +
+  scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
+  geom_vline(
+    data = subset(df_plot, status == "Data missing"), 
+    aes(xintercept = as.numeric(date)), 
+    color = "grey70", 
+    linewidth = 0.5
+  ) +
+  scale_fill_manual(
+    values = c("Data available" = "#3B6EA8", "Data missing" = alpha("grey70", 0.8))
+  ) +
+  theme_minimal(base_size = 15, base_family = "Times") +
+  theme(
+    panel.grid   = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position      = c(0.80, 0.95),
+    legend.justification = c(0, 1),
+    legend.key.spacing.y = unit(0.1, "cm"),
+    legend.title = element_blank(),
+    legend.background    = element_rect(fill = "grey95", colour = "grey95"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    axis.ticks.x = element_line(colour = "black", linewidth = 0.4),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.margin        = margin(6, 8, 6, 8),
+    plot.margin          = margin(6, 12, 6, 6),
+    axis.ticks.length = unit(3.5, "pt"),
+    text = element_text(family="Times"),
+  )    
+  
+
+```
+# (WiP) Violin plot
+
+```{r}
+
+```
+
+# (WiP) Usage per project
+
