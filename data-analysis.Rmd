@@ -1,5 +1,5 @@
 ---
-title: "Data in brief analysis"
+title: "Double check to paper"
 output: html_document
 ---
 
@@ -27,11 +27,11 @@ library(anytime)
 path <- "Dataset on Resource Allocation and Usage for a Private Cloud"
 
 server_usage <- read.csv(file.path(path, "servers_usage.csv"))
-user_projects <-  read.csv(file.path(path, "user_projects.csv"))
+# user_projects <-  read.csv(file.path(path, "user_projects.csv"))
 server_specs <- read.csv(file.path(path, "servers_specs.csv"))
-server_ownerships <-read.csv(file.path(path, "servers_ownerships.csv"))
-projects_quota <- read.csv(file.path(path, "projects_quota.csv"))
-projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.csv"))
+# server_ownerships <-read.csv(file.path(path, "servers_ownerships.csv"))
+# projects_quota <- read.csv(file.path(path, "projects_quota.csv"))
+# projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.csv"))
 flavors <- read.csv(file.path(path, "flavors.csv"))
 
 
@@ -207,11 +207,9 @@ unique(server_usage_day$server_id)
 
 
 
-
 # Data gap
 
 ```{r}
-
 
 contagem_na <- server_usage %>% mutate(date=anydate(timestamp), complete_date=anytime(timestamp)) %>% group_by(complete_date) %>% summarise(count_servers = n_distinct(server_id), nas =sum(is.na(vcpu_usage)))
 
@@ -240,10 +238,8 @@ df_plot <- contagem_na %>% mutate(gap = nas >= count_servers, date = anydate(com
                            mutate(status = case_when((gap == TRUE) ~ "Data missing",(gap == FALSE) ~ "Data available"))
 
 
-
-df_plot$date <- as.POSIXct(df_plot$date, format="%Y-%m-%d %H:%M:%S")
-
-breaks.vec <- seq(min(df_plot$complete_date), as.POSIXct("2025-06-17", format="%Y-%m-%d %H:%M:%S"), by = "1 month")
+df_plot$date <- as.Date(df_plot$date)
+breaks.vec <- seq(min(as.Date(df_plot$complete_date)), as.Date("2025-06-17 23:59:59", format="%Y-%m-%d %H:%M:%S"), by = "1 month")
 
 
 ggplot(df_plot, aes(x = date, y = 1)) +
@@ -280,10 +276,36 @@ ggplot(df_plot, aes(x = date, y = 1)) +
   )    
   
 
+summary(df_plot)
 ```
-# (WiP) Violin plot
+# Figure 5 - Violin plot
 
 ```{r}
+
+flavors <- flavors %>% filter(flavor_name == "general.small" | flavor_name == "general.medium" | flavor_name == "general.large" | flavor_name == "general.xlarge")
+
+server_w_flavor <- inner_join(server_specs, flavors, by = "flavor_id") %>% select(-id, -timestamp, -disk, -flavor_id) %>% na.omit() %>% distinct()
+
+server_usage_violin <- server_usage %>% select(-host_id, -id, -vcpu_usage) %>% mutate(date=anydate(timestamp)) %>% select(-timestamp) %>% na.omit() %>% distinct()
+
+servers_w_flavor_usage <- right_join(server_w_flavor, server_usage_violin, by = "server_id")
+                          
+
+plot_df <- servers_w_flavor_usage %>% group_by(date, flavor_name) %>%  na.omit() %>% summarise(media_ram = mean(ram_usage))
+
+ggplot(plot_df, aes(x=flavor_name, y=media_ram, fill=flavor_name)) +
+    geom_violin(width=1) +
+    theme_minimal(base_family = "Times") + scale_fill_brewer(palette = "Dark2") +
+    geom_boxplot(width=0.5, color="gray", alpha=0.5) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=13),
+      base_family = "Times"
+    ) +
+    ggtitle("") +
+    xlab("")+
+    scale_y_continuous(limits = c(0, 40))+
+    ylab("RAM Usage (%)")
 
 ```
 
