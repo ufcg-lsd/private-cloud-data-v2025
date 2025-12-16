@@ -8,7 +8,7 @@ library(dplyr)
 library(ggplot2)
 library(anytime)
 # library(scales)
-# library(tidyr)
+library(tidyr)
 # library(lubridate)
 # library(viridis)
 # library(knitr)
@@ -143,64 +143,96 @@ ggplot(count_users, aes(x = date, y = n_users)) +
 # (WiP) Plot of vcpu and RAM utilization trough the time 
 
 
-```{r}
+```{r fig.width = 8 }
 
-date_min  <- as.Date("2024-05-23")
-date_max  <- as.Date("2025-05-17")
-
-server_usage <- server_usage %>% select(-host_id, -id) %>% na.omit()
-server_resume_flavor <- server_w_flavor %>% select(flavor_name, vcpu, ram, server_id) %>% na.omit() %>% distinct()
+TOP_N <- 4
 
 
-# selecting servers that were right-sized. keeping just the ones that are fully in the dataset and consistent.
-changed_servers <- server_resume_flavor %>% select(server_id, flavor_name) %>% distinct()%>% group_by(server_id) %>% summarise(count=n(), flavor=flavor_name) %>% filter(count >1)
+daily <- server_usage %>%
+  mutate(day = anydate(timestamp)) %>%
+  group_by(server_id, day) %>%
+  summarise(
+    vcpu_pct = mean(vcpu_usage, na.rm = TRUE),
+    ram_pct  = mean(ram_usage,  na.rm = TRUE),
+    .groups  = "drop"
+  )
 
-
-server_usage <- server_usage %>% filter(!server_id %in% changed_servers$server_id)
-
-server_usage_full <- right_join(server_resume_flavor, server_usage, by = c("server_id")) %>% mutate(date=anydate(timestamp)) %>% filter(date < date_max)
-  
-  
-total_dates <- n_distinct(server_usage_full$date)
-
-consistent_servers <- server_usage_full %>%
-  group_by(server_id) %>%
-  summarise(n_observacoes = n(), .groups = 'drop') %>%
-  filter(n_observacoes >= total_dates) %>%
+top_servers <- daily %>% 
+  count(server_id, sort = TRUE) %>% 
+  slice_head(n = TOP_N) %>% 
   pull(server_id)
 
-server_usage_main_servers <- server_usage %>%
-  filter(server_id %in% consistent_servers) %>% 
-  mutate(date = anydate(timestamp)) %>% 
-  group_by(date, server_id) %>% 
-  summarise(vcpu_usage = mean(vcpu_usage), ram_usage = mean(ram_usage), vcpu_perc = vcpu_usage/vcpu)
+
+daily_top <- daily %>% filter(server_id %in% top_servers)
+
+x_min <- min(daily_top$day, na.rm = TRUE)
+x_max <- max(daily_top$day, na.rm = TRUE)
+
+month_breaks <- seq(
+  from = floor_date(x_min, "month"),
+  to   = floor_date(x_max, "month"),
+  by   = "1 month"
+)
 
 
-# Servidores que estão no top 4 de AMBAS as métricas
-servers_top_duas_metricas <- intersect(top_cpu, top_ram)
+df_long <- daily_top %>% 
+  select(server_id, day,
+         `vCPU utilization [%]` = vcpu_pct,
+         `RAM utilization [%]`  = ram_pct) %>% 
+  pivot_longer(
+    cols      = c(`vCPU utilization [%]`, `RAM utilization [%]`),
+    names_to  = "metric",
+    values_to = "value"
+  )
+
+pal <- c(
+  "#A45A6B", "#2F7F7F", "#D17C2E", "#3B6EA8",
+  "#6C8E4C", "#8C6BB1", "#B07F4F", "#7A7A7A"
+)
+pal <- pal[seq_len(length(top_servers))]
+names(pal) <- top_servers
 
 
+paper_theme <- theme_minimal(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    axis.title.x = element_blank(),
+    axis.ticks.x = element_line(colour = "black", linewidth = 0.4),
+    axis.ticks.length = unit(3.5, "pt"),
+    axis.text.x = element_text(margin = margin(t = 6))
+  )
 
-# first, aggregate by day 
-server_usage_day <- server_usage %>% 
-                    mutate(date=anydate(timestamp)) %>% 
-                    select(-id, -timestamp, -host_id) %>% 
-                    group_by(server_id, date) %>% summarise(mean_cpu = mean(vcpu_usage), mean_ram = mean(ram_usage)) %>% 
-                    na.omit() %>% 
-                    filter(date >= date_min | date <= date_max)
+make_panel <- function(data_metric, show_legend = TRUE, title = NULL) {
+  ggplot(data_metric,
+         aes(x = day, y = value, color = server_id)) +
+    geom_line(linewidth = 0.7, na.rm = TRUE) +
+    scale_color_manual(values = pal,
+                       name   = "Server ID",
+                       guide  = if (show_legend) "legend" else "none") +
+    scale_y_continuous(
+      limits = c(0, 100),
+      breaks = seq(0, 100, 25),
+      labels = \(x) paste0(x, "%")
+    ) +
+    scale_x_date(
+      breaks = month_breaks,
+      labels = scales::label_date("%b %y", locale = "C"),
+      expand = c(0, 0)
+    ) +
+    labs(title = title) +
+    paper_theme
+}
 
-total_timestamps <- length(unique(server_usage_day$date))
+df_long %>% 
+  filter(metric == "vCPU utilization [%]") %>% 
+  make_panel(show_legend = FALSE,
+             title = "(a) vCPU utilization")
 
-
-servers_completos <- server_usage_day %>%
-  group_by(server_id) %>% summarise(n_observacoes = length(unique(date))) %>% 
-  filter(n_observacoes > 300)
-
-
-
-
-unique(server_usage_day$server_id)
-
+df_long %>% 
+  filter(metric == "RAM utilization [%]") %>% 
+  make_panel(show_legend = FALSE,
+             title = "(b) RAM utilization")
 
 
 ```
