@@ -8,15 +8,12 @@ library(dplyr)
 library(ggplot2)
 library(anytime)
 library(tidyr)
-
+library(lubridate)
 ```
 
-
 ## Importing Data
-
 ```{r}
 path <- "Dataset on Resource Allocation and Usage for a Private Cloud"
-
 server_usage <- read.csv(file.path(path, "servers_usage.csv"))
 user_projects <-  read.csv(file.path(path, "user_projects.csv"))
 server_specs <- read.csv(file.path(path, "servers_specs.csv"))
@@ -25,30 +22,24 @@ projects_quota <- read.csv(file.path(path, "projects_quota.csv"))
 projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.csv"))
 flavors <- read.csv(file.path(path, "flavors.csv"))
 
-
 ```
 
 
-
 ## Matching servers with flavors and projects. 
-This way we will have the list of servers with respective flavor and project. Also, we are using the anydate lib to get a redable timestamp. 
+This way we will have the list of servers with respective flavor and project
 ```{r}
-
 server_w_flavor <- inner_join(server_specs, flavors, by = "flavor_id") %>% select(-id) %>% 
                    mutate(date = anydate(timestamp))
-
 
 server_ownerships <- server_ownerships %>% select(-id, -timestamp) %>% distinct()
 servers_complete <- inner_join(server_w_flavor, server_ownerships, by = "server_id")
 
 summary(servers_complete)
-
 ```
 
 
 ## Count instances per project.
 ```{r}
-
 count_servers <- servers_complete %>% group_by(date, project_id) %>% summarise(n_instances = n_distinct(server_id))
 
 count_servers_total <- count_servers %>% 
@@ -64,13 +55,8 @@ count_servers_top_k <- count_servers %>%
 ```
 
 
-# Figure 2 - Plot stacked area of instances per project
+## Themes for the plots
 ```{r}
-base_palette <- c("#7A7A7A","#D17C2E","#3B6EA8","#8C6BB1","#6C8E4C","#A45A6B")
-
-
-breaks.vec <- seq(min(count_servers_top_k$date), as.Date("2025-06-17"), by = "1 month")
-
 paper_theme <- theme_minimal(base_size = 15, base_family = "Time") +
   theme(
     text = element_text(face = "plain"),
@@ -84,14 +70,7 @@ paper_theme <- theme_minimal(base_size = 15, base_family = "Time") +
     axis.text.x   = element_text(margin = margin(t = 6))
   )
 
-ggplot(count_servers_top_k, aes(x = date, y = n_instances, fill = Project)) +
-  geom_area(position = "stack", alpha = 0.9) +
-  scale_x_continuous(limits = c(0, 300)) +
-  scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
-  labs(x = NULL, y = "Number of instances by project") +
-  paper_theme  +
-  scale_fill_manual(values = base_palette) + 
-  theme(
+theme_legends <- theme(
     legend.position      = c(0.02, 0.98),
     legend.justification = c(0, 1),
     legend.background    = element_rect(fill = "grey95", colour = "grey55"),
@@ -102,6 +81,25 @@ ggplot(count_servers_top_k, aes(x = date, y = n_instances, fill = Project)) +
     text = element_text(family="Times"),
   ) 
 
+
+base_palette <- c("#7A7A7A","#D17C2E","#3B6EA8","#8C6BB1","#6C8E4C","#A45A6B")
+
+```
+
+
+# Figure 2 - Plot stacked area of instances per project
+```{r}
+
+breaks.vec <- seq(min(count_servers_top_k$date), as.Date("2025-06-17"), by = "1 month")
+
+ggplot(count_servers_top_k, aes(x = date, y = n_instances, fill = Project)) +
+  geom_area(position = "stack", alpha = 0.9) +
+  scale_x_continuous(limits = c(0, 300)) +
+  scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
+  labs(x = NULL, y = "Number of servers by project") +
+  paper_theme  +
+  scale_fill_manual(values = base_palette) + 
+  theme_legends
 ```
 
 
@@ -115,22 +113,11 @@ ggplot(count_users, aes(x = date, y = n_users)) +
   scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
   labs(x = NULL, y = "Number of users") +
   paper_theme  +
-  scale_fill_manual(values = base_palette) + 
-  theme(
-    legend.position      = c(0.02, 0.98),
-    legend.justification = c(0, 1),
-    legend.background    = element_rect(fill = "grey95", colour = "grey55"),
-    legend.key.height    = unit(5, "pt"),
-    legend.key.width     = unit(14, "pt"),
-    legend.margin        = margin(6, 8, 6, 8),
-    plot.margin          = margin(6, 12, 6, 6),
-    text = element_text(family="Times"),
-  
-  ) 
+  scale_fill_manual(values = base_palette) + theme_legends
+
 ```
 
 # Figure 4 - Plot of vcpu and RAM utilization trough the time 
-
 ```{r fig.width = 8 }
 
 TOP_N <- 4
@@ -172,23 +159,9 @@ df_long <- daily_top %>%
     values_to = "value"
   )
 
-pal <- c(
-  "#A45A6B", "#2F7F7F", "#D17C2E", "#3B6EA8",
-  "#6C8E4C", "#8C6BB1", "#B07F4F", "#7A7A7A"
-)
-pal <- pal[seq_len(length(top_servers))]
+
+pal <- base_palette[seq_len(length(top_servers))]
 names(pal) <- top_servers
-
-
-paper_theme <- theme_minimal(base_size = 11) +
-  theme(
-    panel.grid.minor = element_blank(),
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
-    axis.title.x = element_blank(),
-    axis.ticks.x = element_line(colour = "black", linewidth = 0.4),
-    axis.ticks.length = unit(3.5, "pt"),
-    axis.text.x = element_text(margin = margin(t = 6))
-  )
 
 make_panel <- function(data_metric, show_legend = TRUE, title = NULL) {
   ggplot(data_metric,
@@ -225,7 +198,6 @@ df_long %>%
 ```
 
 # Figure 5 - Violin plot
-
 ```{r}
 
 flavors <- flavors %>% filter(flavor_name == "general.small" | flavor_name == "general.medium" | flavor_name == "general.large" | flavor_name == "general.xlarge")
@@ -239,13 +211,8 @@ plot_df <- servers_w_flavor_usage %>% group_by(date, flavor_name) %>%  na.omit()
 
 ggplot(plot_df, aes(x=flavor_name, y=media_ram, fill=flavor_name)) +
     geom_violin(width=1) +
-    theme_minimal(base_family = "Times") + scale_fill_brewer(palette = "Dark2") +
+    paper_theme + scale_fill_brewer(palette = "Dark2") +
     geom_boxplot(width=0.5, color="gray", alpha=0.5) +
-    theme(
-      legend.position="none",
-      plot.title = element_text(size=13),
-      base_family = "Times"
-    ) +
     ggtitle("") +
     xlab("")+
     scale_y_continuous(limits = c(0, 40))+
@@ -254,7 +221,6 @@ ggplot(plot_df, aes(x=flavor_name, y=media_ram, fill=flavor_name)) +
 ```
 
 # Figure 6 - Data gaps
-
 ```{r}
 
 contagem_na <- server_usage %>% mutate(date=anydate(timestamp), complete_date=anytime(timestamp)) %>% group_by(complete_date) %>% summarise(count_servers = n_distinct(server_id), nas =sum(is.na(vcpu_usage)))
@@ -283,7 +249,6 @@ df_plot <- contagem_na %>% mutate(gap = nas >= count_servers, date = anydate(com
 
 df_plot$date <- as.Date(df_plot$date)
 breaks.vec <- seq(min(as.Date(df_plot$complete_date)), as.Date("2025-06-17 23:59:59", format="%Y-%m-%d %H:%M:%S"), by = "1 month")
-
 
 ggplot(df_plot, aes(x = date, y = 1)) +
   geom_tile(aes(fill = status),height = Inf) +
@@ -318,10 +283,8 @@ ggplot(df_plot, aes(x = date, y = 1)) +
     text = element_text(family="Times"),
   )    
   
-
 summary(df_plot)
 ```
-
 
 
 #  Figure 9 - Usage per project
@@ -341,7 +304,6 @@ proj_avg <- projects_quota_allocated %>%
   inner_join(quota, by="project_id") %>% 
   filter(is.finite(avg_ram_mb), is.finite(quota_ram), quota_ram > 0) |>
   mutate(usage_pct = pmin(100, 100 * avg_ram_mb / quota_ram))
-
 
 breaks <- c(0,25,50,75,100)
 labels <- c("0–25%","25–50%","50–75%","75–100%")
