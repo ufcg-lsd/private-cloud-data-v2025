@@ -1,0 +1,13 @@
+# Figure 3 - Plot users trough the time
+```{r}
+count_users <- servers_complete %>% group_by(date) %>% summarise(n_users = n_distinct(user_id))
+
+ggplot(count_users, aes(x = date, y = n_users)) +
+  geom_line(color="#D17C2E") +
+  scale_y_continuous(limits = c(30, 80)) +
+  scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
+  labs(x = NULL, y = "Number of users") +
+  paper_theme  +
+  scale_fill_manual(values = base_palette) + theme_legends
+
+```

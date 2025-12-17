@@ -1,0 +1,87 @@
+---
+title: "Exploration of  Resource Allocation and Usage for a Private Cloud"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(anytime)
+library(tidyr)
+library(lubridate)
+```
+
+## Importing Data
+```{r}
+path <- "Dataset on Resource Allocation and Usage for a Private Cloud"
+server_usage <- read.csv(file.path(path, "servers_usage.csv"))
+user_projects <-  read.csv(file.path(path, "user_projects.csv"))
+server_specs <- read.csv(file.path(path, "servers_specs.csv"))
+server_ownerships <-read.csv(file.path(path, "servers_ownerships.csv"))
+projects_quota <- read.csv(file.path(path, "projects_quota.csv"))
+projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.csv"))
+flavors <- read.csv(file.path(path, "flavors.csv"))
+
+```
+
+
+## Matching servers with flavors and projects. 
+This way we will have the list of servers with respective flavor and project
+```{r}
+server_w_flavor <- inner_join(server_specs, flavors, by = "flavor_id") %>% select(-id) %>% 
+                   mutate(date = anydate(timestamp))
+
+server_ownerships <- server_ownerships %>% select(-id, -timestamp) %>% distinct()
+servers_complete <- inner_join(server_w_flavor, server_ownerships, by = "server_id")
+
+summary(servers_complete)
+```
+
+
+## Count instances per project.
+```{r}
+count_servers <- servers_complete %>% group_by(date, project_id) %>% summarise(n_instances = n_distinct(server_id))
+
+count_servers_total <- count_servers %>% 
+                       group_by(project_id) %>% 
+                       summarise(total_instances = sum(n_instances)) %>% 
+                       arrange(desc(total_instances))
+
+top_5 <- count_servers_total$project_id[1:5]
+count_servers_top_k <- count_servers %>% 
+                 mutate(Project = if_else(project_id %in% top_5, project_id, "Others")) %>% 
+                 group_by(date, Project) %>% summarise(n_instances=sum(n_instances))
+
+```
+
+
+## Themes for the plots
+```{r}
+paper_theme <- theme_minimal(base_size = 15, base_family = "Time") +
+  theme(
+    text = element_text(face = "plain"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    plot.title = element_blank(),
+    axis.title.x = element_blank(),
+    axis.line.x   = element_blank(),
+    axis.ticks.x  = element_line(colour = "black", linewidth = 0.4),
+    axis.ticks.length = unit(3.5, "pt"),
+    axis.text.x   = element_text(margin = margin(t = 6))
+  )
+
+theme_legends <- theme(
+    legend.position      = c(0.02, 0.98),
+    legend.justification = c(0, 1),
+    legend.background    = element_rect(fill = "grey95", colour = "grey55"),
+    legend.key.height    = unit(5, "pt"),
+    legend.key.width     = unit(14, "pt"),
+    legend.margin        = margin(6, 8, 6, 8),
+    plot.margin          = margin(6, 12, 6, 6),
+    text = element_text(family="Times"),
+  ) 
+
+
+base_palette <- c("#7A7A7A","#D17C2E","#3B6EA8","#8C6BB1","#6C8E4C","#A45A6B")
+
+```

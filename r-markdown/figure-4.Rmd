@@ -1,0 +1,79 @@
+# Figure 4 - Plot of vcpu and RAM utilization trough the time 
+```{r fig.width = 8 }
+
+TOP_N <- 4
+
+daily <- server_usage %>%
+  mutate(day = anydate(timestamp)) %>%
+  group_by(server_id, day) %>%
+  summarise(
+    vcpu_pct = mean(vcpu_usage, na.rm = TRUE),
+    ram_pct  = mean(ram_usage,  na.rm = TRUE),
+    .groups  = "drop"
+  )
+
+top_servers <- daily %>% 
+  count(server_id, sort = TRUE) %>% 
+  slice_head(n = TOP_N) %>% 
+  pull(server_id)
+
+
+daily_top <- daily %>% filter(server_id %in% top_servers)
+
+x_min <- min(daily_top$day, na.rm = TRUE)
+x_max <- max(daily_top$day, na.rm = TRUE)
+
+month_breaks <- seq(
+  from = floor_date(x_min, "month"),
+  to   = floor_date(x_max, "month"),
+  by   = "1 month"
+)
+
+
+df_long <- daily_top %>% 
+  select(server_id, day,
+         `vCPU utilization [%]` = vcpu_pct,
+         `RAM utilization [%]`  = ram_pct) %>% 
+  pivot_longer(
+    cols      = c(`vCPU utilization [%]`, `RAM utilization [%]`),
+    names_to  = "metric",
+    values_to = "value"
+  )
+
+
+pal <- base_palette[seq_len(length(top_servers))]
+names(pal) <- top_servers
+
+make_panel <- function(data_metric, show_legend = TRUE, title = NULL) {
+  ggplot(data_metric,
+         aes(x = day, y = value, color = server_id)) +
+    geom_line(linewidth = 0.7, na.rm = TRUE) +
+    scale_color_manual(values = pal,
+                       name   = "Server ID",
+                       guide  = if (show_legend) "legend" else "none") +
+    scale_y_continuous(
+      limits = c(0, 100),
+      breaks = seq(0, 100, 25),
+      labels = \(x) paste0(x, "%")
+    ) +
+    scale_x_date(
+      breaks = month_breaks,
+      labels = scales::label_date("%b %y", locale = "C"),
+      expand = c(0, 0)
+    ) +
+    labs(title = title) +
+    paper_theme
+}
+
+df_long %>% 
+  filter(metric == "vCPU utilization [%]") %>% 
+  make_panel(show_legend = FALSE,
+             title = "(a) vCPU utilization")
+
+df_long %>% 
+  filter(metric == "RAM utilization [%]") %>% 
+  make_panel(show_legend = FALSE,
+             title = "(b) RAM utilization")
+
+
+```

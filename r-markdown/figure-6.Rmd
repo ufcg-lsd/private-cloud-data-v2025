@@ -1,0 +1,66 @@
+
+# Figure 6 - Data gaps
+```{r}
+
+contagem_na <- server_usage %>% mutate(date=anydate(timestamp), complete_date=anytime(timestamp)) %>% group_by(complete_date) %>% summarise(count_servers = n_distinct(server_id), nas =sum(is.na(vcpu_usage)))
+
+filtered <- contagem_na %>%  filter(nas >= count_servers)
+
+nas <- server_usage %>% mutate(date=anytime(timestamp)) %>%  filter(is.na(vcpu_usage), is.na(ram_usage)) %>% select(-id, -timestamp, -server_id, -host_id, -vcpu_usage, -ram_usage) %>% distinct()
+
+df <- filtered %>%
+  mutate(delta = as.numeric(difftime(complete_date, lag(complete_date), units = "mins")),
+         group = cumsum(ifelse(is.na(delta) | delta != 5, 1, 0)))
+
+intervals <- df %>%
+  group_by(group) %>%
+  summarise(
+    start = min(complete_date),
+    end = max(complete_date),
+    length = n()
+  ) %>%
+  arrange(desc(length))
+
+intervals <- intervals %>% mutate(size_interval = length * 5 ) %>% group_by(size_interval) %>% summarise(count = n())
+
+df_plot <- contagem_na %>% mutate(gap = nas >= count_servers, date = anydate(complete_date)) %>% 
+                           mutate(status = case_when((gap == TRUE) ~ "Data missing",(gap == FALSE) ~ "Data available"))
+
+df_plot$date <- as.Date(df_plot$date)
+breaks.vec <- seq(min(as.Date(df_plot$complete_date)), as.Date("2025-06-17 23:59:59", format="%Y-%m-%d %H:%M:%S"), by = "1 month")
+
+ggplot(df_plot, aes(x = date, y = 1)) +
+  geom_tile(aes(fill = status),height = Inf) +
+  scale_x_date(breaks = breaks.vec, date_labels = "%b %y") +  
+  geom_vline(
+    data = subset(df_plot, status == "Data missing"), 
+    aes(xintercept = as.numeric(date)), 
+    color = "grey70", 
+    linewidth = 0.5
+  ) +
+  scale_fill_manual(
+    values = c("Data available" = "#3B6EA8", "Data missing" = alpha("grey70", 0.8))
+  ) +
+  theme_minimal(base_size = 15, base_family = "Times") +
+  theme(
+    panel.grid   = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position      = c(0.80, 0.95),
+    legend.justification = c(0, 1),
+    legend.key.spacing.y = unit(0.1, "cm"),
+    legend.title = element_blank(),
+    legend.background    = element_rect(fill = "grey95", colour = "grey95"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    axis.ticks.x = element_line(colour = "black", linewidth = 0.4),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.margin        = margin(6, 8, 6, 8),
+    plot.margin          = margin(6, 12, 6, 6),
+    axis.ticks.length = unit(3.5, "pt"),
+    text = element_text(family="Times"),
+  )    
+  
+summary(df_plot)
+```
