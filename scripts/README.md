@@ -1,6 +1,6 @@
 # Data Collection Scripts
 
-This directory provides pseudocode examples of the data collection scripts used to build the dataset [Dataset on Resource Allocation and Usage for a Private Cloud
+This directory provides pseudocode samples of the data collection scripts used to build the dataset [Dataset on Resource Allocation and Usage for a Private Cloud
 ](http://doi.org/10.17632/trvb5k4x5m.1).  
 
 The purpose of these scripts is to document the data collection methodology and to clarify how different data domains were obtained from the cloud infrastructure. In particular, the collection process captures projects, understood as organizational units that group users and define resource allocation quotas; users, who act as cloud clients and may be associated with one or more projects; flavors, which represent hardware configurations for virtual machines; and servers, understood here as virtual machine instances, together with their corresponding resource usage metrics over time.
