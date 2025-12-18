@@ -1,0 +1,87 @@
+# Plot of vcpu and RAM usage trough the time 
+```{r fig.width = 8, fig.height = 8 }
+
+TOP_N <- 4
+daily <- server_usage %>%
+  mutate(day = anydate(timestamp)) %>%
+  group_by(server_id, day) %>%
+  summarise(
+    vcpu_pct = mean(vcpu_usage, na.rm = TRUE),
+    ram_pct  = mean(ram_usage,  na.rm = TRUE),
+    .groups  = "drop"
+  )
+
+top_servers <- daily %>% 
+  count(server_id, sort = TRUE) %>% 
+  slice_head(n = TOP_N) %>% 
+  pull(server_id)
+
+daily_top <- daily %>% filter(server_id %in% top_servers)
+
+x_min <- min(daily_top$day, na.rm = TRUE)
+x_max <- max(daily_top$day, na.rm = TRUE)
+
+month_breaks <- seq(from = floor_date(x_min, "month"), to   = floor_date(x_max, "month"), by   = "1 month")
+
+df_long <- daily_top %>% 
+  select(server_id, day,
+         `vCPU usage [%]` = vcpu_pct,
+         `RAM usage [%]`  = ram_pct) %>% 
+  pivot_longer(
+    cols      = c(`vCPU usage [%]`, `RAM usage [%]`),
+    names_to  = "metric",
+    values_to = "value"
+  )
+
+pal <- base_palette[seq_len(length(top_servers))]
+names(pal) <- top_servers
+
+make_panel <- function(data_metric, show_legend = TRUE, title = NULL, lab) {
+ plot_base <-  ggplot(data_metric,
+         aes(x = day, y = value, color = server_id)) +
+    geom_line(linewidth = 0.7, na.rm = TRUE) +
+    scale_color_manual(values = pal,
+                       name   = "Server ID",
+                       guide  = if (show_legend) "legend" else "none") +
+    scale_y_continuous(
+      limits = c(0, 100),
+      breaks = seq(0, 100, 25),
+      labels = \(x) paste0(x, "%")
+    ) +
+    scale_x_date(
+      breaks = month_breaks,
+      labels = scales::label_date("%b %y", locale = "C"),
+      expand = c(0, 0)
+    ) +
+    paper_theme +
+    labs(title = title) +
+      theme(
+    legend.position      = c(0.975, 0.99),
+    legend.justification = c(1, 1),
+    legend.background    = element_rect(fill = "grey95", color = "grey55"),
+    legend.box.background= element_rect(fill = "grey95", color = "grey55"),
+    legend.margin        = margin(5, 7, 5, 7),
+    legend.text          = element_text(size = 8),
+  ) + ylab(lab)
+ 
+   if (show_legend) {
+    plot_base +
+      guides(color = guide_legend(ncol = 1, byrow = TRUE,
+                                  keywidth = unit(12, "pt")))
+  } else {
+    plot_base
+  }
+}
+
+p_cpu <- df_long %>% 
+  filter(metric == "vCPU usage [%]") %>% 
+  make_panel(show_legend = TRUE,
+             title = "(a) vCPU usage", lab ="vCPU usage [%]" )
+
+p_ram <- df_long %>% 
+  filter(metric == "RAM usage [%]") %>% 
+  make_panel(show_legend = FALSE,
+             title = "(b) RAM usage", lab = "RAM usage [%]")
+
+p_cpu / p_ram 
+```
