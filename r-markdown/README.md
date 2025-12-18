@@ -1,12 +1,6 @@
 # Reproducing Analysis
 
-This repository contains all R Markdown scripts required to reproduce the figures from the paper "Dataset on Resource Allocation and Usage for a Private Cloud".
-
-## Folder Structure
-
-- **`r-markdown/`**: Contains individual `.Rmd` files for each figure.
-  - Files are named matching the paper (e.g., `figure-9.Rmd` for Figure 9).
-  - Each file generates one specific figure with complete code and analysis.
+This repository contains all R Markdown scripts required to reproduce exploratory analysis with ["Dataset on Resource Allocation and Usage for a Private Cloud"](https://data.mendeley.com/datasets/trvb5k4x5m/1)
 
 ## Setup Instructions
 
@@ -15,9 +9,8 @@ This repository contains all R Markdown scripts required to reproduce the figure
    - Reads raw data files
    - Prepares datasets for plotting
 
-2. **Generate figures**: Open and knit individual `figure-X.Rmd` files in order.
+2. **Generate figures**: Open and knit individual `<plot-name>.Rmd` files.
    - Each file is self-contained for its respective figure
-   - Outputs match exactly those in the paper
 
 ## Requirements
 
@@ -25,4 +18,9 @@ This repository contains all R Markdown scripts required to reproduce the figure
 - All dependencies handled by `setup-data.Rmd`
 - 8GB RAM
 
-Run `setup-data.Rmd` -->  knit desired `figure-X.Rmd` files --> reproduce paper figures exactly.
+
+### Please consider to cite our dataset in your paper! :) 
+
+```
+Marques, Paola; Mendes, Mariana; Pereira, Thiago Emmanuel; Farias, Giovanni (2025), “Dataset on Resource Allocation and Usage for a Private Cloud”, Mendeley Data, V1, doi: 10.17632/trvb5k4x5m.1
+```
