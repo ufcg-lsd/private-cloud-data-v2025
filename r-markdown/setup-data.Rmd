@@ -13,15 +13,14 @@ library(lubridate)
 
 ## Importing Data
 ```{r}
-path <- "Dataset on Resource Allocation and Usage for a Private Cloud"
-server_usage <- read.csv(file.path(path, "servers_usage.csv"))
-user_projects <-  read.csv(file.path(path, "user_projects.csv"))
+path <- "../../Dataset on Resource Allocation and Usage for a Private Cloud"
+server_usage <- read.csv(file.path(path, "servers_usage.csv")) 
+user_projects <- read.csv(file.path(path, "user_projects.csv")) 
 server_specs <- read.csv(file.path(path, "servers_specs.csv"))
-server_ownerships <-read.csv(file.path(path, "servers_ownerships.csv"))
+server_ownerships <- read.csv(file.path(path, "servers_ownerships.csv"))
 projects_quota <- read.csv(file.path(path, "projects_quota.csv"))
 projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.csv"))
-flavors <- read.csv(file.path(path, "flavors.csv"))
-
+flavors <- read.csv(file.path(path, "flavors.csv")) 
 ```
 
 
@@ -57,17 +56,22 @@ count_servers_top_k <- count_servers %>%
 
 ## Themes for the plots
 ```{r}
-paper_theme <- theme_minimal(base_size = 15, base_family = "Time") +
+paper_theme <- theme_minimal(base_size = 11, base_family = "Times New Roman") +
   theme(
     text = element_text(face = "plain"),
     panel.grid.minor = element_blank(),
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
-    plot.title = element_blank(),
     axis.title.x = element_blank(),
     axis.line.x   = element_blank(),
     axis.ticks.x  = element_line(colour = "black", linewidth = 0.4),
     axis.ticks.length = unit(3.5, "pt"),
-    axis.text.x   = element_text(margin = margin(t = 6))
+    axis.text.x   = element_text(margin = margin(t = 6)),
+    plot.title = element_text(
+      hjust = 0.5,         
+      family = "Times New Roman",
+      face   = "plain",
+      size   = 11
+    )
   )
 
 theme_legends <- theme(
