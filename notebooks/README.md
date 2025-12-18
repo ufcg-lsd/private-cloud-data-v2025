@@ -4,7 +4,7 @@ This repository contains all R Markdown scripts required to reproduce explorator
 
 ## Setup Instructions
 
-1. **Run setup first**: Execute `r-markdown/setup-data.Rmd` before any figure files.
+1. **Run setup first**: Execute `notebooks/setup-data.Rmd` before any figure files.
    - Installs all required libraries
    - Reads raw data files
    - Prepares datasets for plotting
