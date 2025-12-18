@@ -1,4 +1,4 @@
-# Figure 2 - Plot stacked area of instances per project
+# Plot stacked area of instances per project
 ```{r}
 
 breaks.vec <- seq(min(count_servers_top_k$date), as.Date("2025-06-17"), by = "1 month")

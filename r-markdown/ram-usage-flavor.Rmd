@@ -1,4 +1,4 @@
-# Figure 5 - Violin plot
+# RAM usage per flavor
 
 ```{r}
 

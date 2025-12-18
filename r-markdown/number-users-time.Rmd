@@ -1,4 +1,4 @@
-# Figure 3 - Plot users trough the time
+# Number of users trough the time
 ```{r}
 count_users <- servers_complete %>% group_by(date) %>% summarise(n_users = n_distinct(user_id))
 

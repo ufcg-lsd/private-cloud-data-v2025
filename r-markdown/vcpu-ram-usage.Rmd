@@ -1,4 +1,4 @@
-# Figure 4 - Plot of vcpu and RAM utilization trough the time 
+# Plot of vcpu and RAM usage trough the time 
 ```{r fig.width = 8, fig.height = 8 }
 
 TOP_N <- 4

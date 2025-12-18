@@ -1,5 +1,5 @@
 
-#  Figure 9 - Usage per project
+#  RAM usage per project
 ```{r}
 
 quota <- projects_quota %>% 
