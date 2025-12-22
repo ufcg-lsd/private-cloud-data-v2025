@@ -3,7 +3,7 @@
 ## Introduction
 The dataset consists of records collected from a private OpenStack-based cloud operated by the Distributed Systems Laboratory at the Federal University of Campina Grande, Brazil, over approximately one year of operation.
 
-This repository contains sample data collection scripts and an [R Markdown notebook]() for generating plots based on the dataset.
+This repository contains sample data collection scripts and [R Markdown notebooks](https://github.com/ufcg-lsd/private-cloud-data-v2025/tree/main/notebooks) for reproducing plots based on the dataset.
 
 <br>
 <p align="center">
