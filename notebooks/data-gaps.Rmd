@@ -1,12 +1,11 @@
-
 # Data gaps
-```{r}
 
-contagem_na <- server_usage %>% mutate(date=anydate(timestamp), complete_date=anytime(timestamp)) %>% group_by(complete_date) %>% summarise(count_servers = n_distinct(server_id), nas =sum(is.na(vcpu_usage)))
+```{r}
+contagem_na <- server_utilization %>% mutate(date=anydate(timestamp), complete_date=anytime(timestamp)) %>% group_by(complete_date) %>% summarise(count_servers = n_distinct(server_id), nas =sum(is.na(vcpu_utilization)))
 
 filtered <- contagem_na %>%  filter(nas >= count_servers)
 
-nas <- server_usage %>% mutate(date=anytime(timestamp)) %>%  filter(is.na(vcpu_usage), is.na(ram_usage)) %>% select(-id, -timestamp, -server_id, -host_id, -vcpu_usage, -ram_usage) %>% distinct()
+nas <- server_utilization %>% mutate(date=anytime(timestamp)) %>%  filter(is.na(vcpu_utilization), is.na(ram_utilization)) %>% select(-id, -timestamp, -server_id, -host_id, -vcpu_utilization, -ram_utilization) %>% distinct()
 
 df <- filtered %>%
   mutate(delta = as.numeric(difftime(complete_date, lag(complete_date), units = "mins")),
