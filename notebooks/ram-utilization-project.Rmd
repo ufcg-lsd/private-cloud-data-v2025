@@ -1,7 +1,5 @@
-
-#  RAM usage per project
+#  RAM utilization per project
 ```{r}
-
 quota <- projects_quota %>% 
   mutate(ts = anytime(timestamp)) %>% 
   arrange(project_id, desc(ts)) %>% 
@@ -15,17 +13,17 @@ proj_avg <- projects_quota_allocated %>%
   summarise(avg_ram_mb = mean(ram_allocated, na.rm=TRUE), .groups="drop") %>% 
   inner_join(quota, by="project_id") %>% 
   filter(is.finite(avg_ram_mb), is.finite(quota_ram), quota_ram > 0) |>
-  mutate(usage_pct = pmin(100, 100 * avg_ram_mb / quota_ram))
+  mutate(utilization_pct = pmin(100, 100 * avg_ram_mb / quota_ram))
 
 breaks <- c(0,25,50,75,100)
 labels <- c("0–25%","25–50%","50–75%","75–100%")
 
-proj_avg <- proj_avg %>% mutate(usage_bin = cut(usage_pct, breaks=breaks, labels=labels, include.lowest=TRUE, right=TRUE))
+proj_avg <- proj_avg %>% mutate(utilization_bin = cut(utilization_pct, breaks=breaks, labels=labels, include.lowest=TRUE, right=TRUE))
 
 count_bins <- proj_avg %>% 
-  count(usage_bin, name="n_projects") %>% 
-  complete(usage_bin=labels, fill=list(n_projects=0)) %>% 
-  mutate(usage_bin = factor(usage_bin, levels = labels))
+  count(utilization_bin, name="n_projects") %>% 
+  complete(utilization_bin=labels, fill=list(n_projects=0)) %>% 
+  mutate(utilization_bin = factor(utilization_bin, levels = labels))
 
 paper_theme <- theme_minimal(base_size=11, base_family="Time") +
   theme(
@@ -36,16 +34,14 @@ paper_theme <- theme_minimal(base_size=11, base_family="Time") +
   )
 pal <- c("0–25%"="#3B6EA8","25–50%"="#8C6BB1","50–75%"="#D17C2E","75–100%"="#A45A6B")
 
-ggplot(count_bins, aes(x=usage_bin, y=n_projects, fill=usage_bin)) +
+ggplot(count_bins, aes(x=utilization_bin, y=n_projects, fill=utilization_bin)) +
   geom_col(width=0.7, color=NA) +
   geom_text(aes(label=n_projects), vjust=-0.3, size=3.8, family="Times") +
   scale_fill_manual(values=pal, guide="none") +
   scale_y_continuous(expand=expansion(mult=c(0,0.08))) +
   labs(
     y = "Number of projects",
-    x = "Average RAM usage (% of quota)"
+    x = "Average RAM utilization (% of quota)"
   ) +
   paper_theme
-
 ```
-
