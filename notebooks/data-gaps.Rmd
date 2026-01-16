@@ -1,5 +1,4 @@
 # Data gaps
-
 ```{r}
 contagem_na <- server_utilization %>% mutate(date=anydate(timestamp), complete_date=anytime(timestamp)) %>% group_by(complete_date) %>% summarise(count_servers = n_distinct(server_id), nas =sum(is.na(vcpu_utilization)))
 

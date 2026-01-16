@@ -1,6 +1,5 @@
 # Plot stacked area of instances per project
 ```{r}
-
 breaks.vec <- seq(min(count_servers_top_k$date), as.Date("2025-06-17"), by = "1 month")
 
 ggplot(count_servers_top_k, aes(x = date, y = n_instances, fill = Project)) +

@@ -1,5 +1,5 @@
 ---
-title: "Exploration of  Resource Allocation and Usage for a Private Cloud"
+title: "Exploration of Resource Allocation and Usage for a Private Cloud"
 output: html_document
 ---
 
@@ -23,7 +23,7 @@ projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.c
 flavors <- read.csv(file.path(path, "flavors.csv")) 
 ```
 
-## Matching servers with flavors and projects. 
+## Matching servers with flavors and projects
 This way we will have the list of servers with respective flavor and project
 ```{r}
 server_w_flavor <- inner_join(server_specs, flavors, by = "flavor_id") %>% select(-id) %>% 
@@ -35,7 +35,7 @@ servers_complete <- inner_join(server_w_flavor, server_ownerships, by = "server_
 summary(servers_complete)
 ```
 
-## Count instances per project.
+## Count instances per project
 ```{r}
 count_servers <- servers_complete %>% group_by(date, project_id) %>% summarise(n_instances = n_distinct(server_id))
 

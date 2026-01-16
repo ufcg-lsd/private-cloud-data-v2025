@@ -9,5 +9,4 @@ ggplot(count_users, aes(x = date, y = n_users)) +
   labs(x = NULL, y = "Number of users") +
   paper_theme  +
   scale_fill_manual(values = base_palette) + theme_legends
-
 ```
