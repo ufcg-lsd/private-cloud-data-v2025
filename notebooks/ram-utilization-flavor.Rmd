@@ -1,15 +1,13 @@
-# RAM usage per flavor
-
+# RAM utilization per flavor
 ```{r}
-
 flavors <- flavors %>% filter(flavor_name == "general.small" | flavor_name == "general.medium" | flavor_name == "general.large" | flavor_name == "general.xlarge")
 
 server_w_flavor <- inner_join(server_specs, flavors, by = "flavor_id") %>% select(-id, -timestamp, -disk, -flavor_id) %>% na.omit() %>% distinct()
 
-server_usage_violin <- server_usage %>% select(-host_id, -id, -vcpu_usage) %>% mutate(date=anydate(timestamp)) %>% select(-timestamp) %>% na.omit() %>% distinct()
+server_utilization_violin <- server_utilization %>% select(-host_id, -id, -vcpu_utilization) %>% mutate(date=anydate(timestamp)) %>% select(-timestamp) %>% na.omit() %>% distinct()
 
-servers_w_flavor_usage <- right_join(server_w_flavor, server_usage_violin, by = "server_id")
-plot_df <- servers_w_flavor_usage %>% group_by(date, flavor_name) %>%  na.omit() %>% summarise(media_ram = mean(ram_usage))
+servers_w_flavor_utilization <- right_join(server_w_flavor, server_utilization_violin, by = "server_id")
+plot_df <- servers_w_flavor_utilization %>% group_by(date, flavor_name) %>%  na.omit() %>% summarise(media_ram = mean(ram_utilization))
 
 ggplot(plot_df, aes(x=flavor_name, y=media_ram, fill=flavor_name)) +
     geom_violin(width=1) +
@@ -18,6 +16,5 @@ ggplot(plot_df, aes(x=flavor_name, y=media_ram, fill=flavor_name)) +
     ggtitle("") +
     xlab("")+
     scale_y_continuous(limits = c(0, 40))+
-    ylab("RAM Usage (%)")
-
+    ylab("RAM Utilization (%)")
 ```
