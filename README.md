@@ -89,15 +89,15 @@ The dataset is organized into seven CSV files, each representing a distinct data
 | user_id | Unique user identifier (UUID) |
 | project_id | Unique project identifier (UUID) |
 
-#### servers_usage.csv
+#### servers_utilization.csv
 
 | Field | Description |
 |--|--|
 | id | Unique row identifier |
 | timestamp | Collection time in UNIX epoch seconds |
 | server_id | Unique server identifier (UUID) |
-| vcpu_usage | vCPU usage (%) |
-| ram_usage | Memory (RAM) usage (%) |
+| vcpu_utilization | vCPU utilization (%) |
+| ram_utilization | Memory (RAM) utilization (%) |
 | host_id | Compute host identifier |
 
 #### flavors.csv
