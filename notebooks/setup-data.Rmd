@@ -14,7 +14,7 @@ library(lubridate)
 ## Importing Data
 ```{r}
 path <- "../../Dataset on Resource Allocation and Usage for a Private Cloud"
-server_usage <- read.csv(file.path(path, "servers_usage.csv")) 
+server_utilization <- read.csv(file.path(path, "servers_utilization.csv")) 
 user_projects <- read.csv(file.path(path, "user_projects.csv")) 
 server_specs <- read.csv(file.path(path, "servers_specs.csv"))
 server_ownerships <- read.csv(file.path(path, "servers_ownerships.csv"))
@@ -22,7 +22,6 @@ projects_quota <- read.csv(file.path(path, "projects_quota.csv"))
 projects_quota_allocated <- read.csv(file.path(path, "projects_quota_allocated.csv"))
 flavors <- read.csv(file.path(path, "flavors.csv")) 
 ```
-
 
 ## Matching servers with flavors and projects. 
 This way we will have the list of servers with respective flavor and project
@@ -35,7 +34,6 @@ servers_complete <- inner_join(server_w_flavor, server_ownerships, by = "server_
 
 summary(servers_complete)
 ```
-
 
 ## Count instances per project.
 ```{r}
@@ -50,9 +48,7 @@ top_5 <- count_servers_total$project_id[1:5]
 count_servers_top_k <- count_servers %>% 
                  mutate(Project = if_else(project_id %in% top_5, project_id, "Others")) %>% 
                  group_by(date, Project) %>% summarise(n_instances=sum(n_instances))
-
 ```
-
 
 ## Themes for the plots
 ```{r}
@@ -85,7 +81,5 @@ theme_legends <- theme(
     text = element_text(family="Times"),
   ) 
 
-
 base_palette <- c("#7A7A7A","#D17C2E","#3B6EA8","#8C6BB1","#6C8E4C","#A45A6B")
-
 ```
