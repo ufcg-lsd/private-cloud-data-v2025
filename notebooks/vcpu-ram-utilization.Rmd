@@ -1,13 +1,13 @@
-# Plot of vcpu and RAM usage trough the time 
+# Plot of vcpu and RAM utilization trough the time 
 ```{r fig.width = 8, fig.height = 8 }
 
 TOP_N <- 4
-daily <- server_usage %>%
+daily <- server_utilization %>%
   mutate(day = anydate(timestamp)) %>%
   group_by(server_id, day) %>%
   summarise(
-    vcpu_pct = mean(vcpu_usage, na.rm = TRUE),
-    ram_pct  = mean(ram_usage,  na.rm = TRUE),
+    vcpu_pct = mean(vcpu_utilization, na.rm = TRUE),
+    ram_pct  = mean(ram_utilization,  na.rm = TRUE),
     .groups  = "drop"
   )
 
@@ -25,10 +25,10 @@ month_breaks <- seq(from = floor_date(x_min, "month"), to   = floor_date(x_max, 
 
 df_long <- daily_top %>% 
   select(server_id, day,
-         `vCPU usage [%]` = vcpu_pct,
-         `RAM usage [%]`  = ram_pct) %>% 
+         `vCPU utilization [%]` = vcpu_pct,
+         `RAM utilization [%]`  = ram_pct) %>% 
   pivot_longer(
-    cols      = c(`vCPU usage [%]`, `RAM usage [%]`),
+    cols      = c(`vCPU utilization [%]`, `RAM utilization [%]`),
     names_to  = "metric",
     values_to = "value"
   )
@@ -74,14 +74,14 @@ make_panel <- function(data_metric, show_legend = TRUE, title = NULL, lab) {
 }
 
 p_cpu <- df_long %>% 
-  filter(metric == "vCPU usage [%]") %>% 
+  filter(metric == "vCPU utilization [%]") %>% 
   make_panel(show_legend = TRUE,
-             title = "(a) vCPU usage", lab ="vCPU usage [%]" )
+             title = "(a) vCPU utilization", lab ="vCPU utilization [%]" )
 
 p_ram <- df_long %>% 
-  filter(metric == "RAM usage [%]") %>% 
+  filter(metric == "RAM utilization [%]") %>% 
   make_panel(show_legend = FALSE,
-             title = "(b) RAM usage", lab = "RAM usage [%]")
+             title = "(b) RAM utilization", lab = "RAM utilization [%]")
 
 p_cpu / p_ram 
 ```
